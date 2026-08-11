@@ -45,8 +45,7 @@ const state = {
     savingsRate: Number(localStorage.getItem('target_savings_rate')) || 30,
     savingsGoal: Number(localStorage.getItem('target_savings_goal')) || 500000
   },
-  apiScriptUrl: localStorage.getItem('google_apps_script_url') || '',
-  sessionSubmissions: [],
+apiScriptUrl: 'https://script.google.com/macros/s/AKfycbzi3pqCjBnthJJ0nscaVJemPwYrvV5JOIQGLakV_k13xHoe8Kb63uexBdJRRw5HkUNM/exec',  sessionSubmissions: [],
   charts: {}
 };
 
@@ -2067,15 +2066,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Web App API URL input configuration
-  const inputApiUrl = document.getElementById('input-api-url');
-  if (inputApiUrl) {
-    inputApiUrl.value = state.apiScriptUrl;
-    inputApiUrl.addEventListener('input', (e) => {
-      state.apiScriptUrl = e.target.value.trim();
-      localStorage.setItem('google_apps_script_url', state.apiScriptUrl);
-    });
-  }
+// Web App API URL - permanently configured
+const inputApiUrl = document.getElementById('input-api-url');
+
+if (inputApiUrl) {
+  inputApiUrl.value = state.apiScriptUrl;
+  inputApiUrl.readOnly = true;
+  inputApiUrl.style.cursor = 'not-allowed';
+  inputApiUrl.title = 'Google Apps Script URL is permanently configured';
+}
 
   // Submit Expense Form
   if (formExpense) {
