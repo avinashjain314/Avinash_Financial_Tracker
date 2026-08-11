@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Avinash's Financial Dashboard - Salary & Expenses Tracker</title>
+  <meta name="description" content="State-of-the-art interactive financial dashboard showing live cashflows, earnings, savings rate, and expense distributions.">
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- FontAwesome Icons for modern visuals -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- ApexCharts CDN for advanced charts -->
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+</head>
+<body>
+
+  <!-- Full-screen Glassmorphic Loader -->
+  <div id="app-loader" class="loading-overlay">
+    <div class="loading-logo">
+      <i class="fa-solid fa-chart-line"></i>
+    </div>
+    <div class="loading-spinner"></div>
+    <div id="app-loader-text" class="loading-text">Fetching live data...</div>
+    <div id="app-loader-sub" class="loading-subtext">Connecting to Google Spreadsheets dynamically</div>
+  </div>
+
+  <div class="app-container">
+    
+    <!-- Top Dashboard Header -->
+    <header>
+      <div class="brand">
+        <div class="brand-logo">
+          <i class="fa-solid fa-wallet"></i>
+        </div>
+        <div class="brand-text">
+          <h1>FINANCIAL AUTOMATION DASHBOARD</h1>
+          <p>Real-time salary and expense tracking synced directly from your Google Sheets</p>
+        </div>
+      </div>
+      
+      <div class="sync-status">
+        <div class="sync-time">
+          <div class="sync-indicator"></div>
+          <span>Synced: <strong id="last-sync-time">Checking...</strong></span>
+        </div>
+        <button id="btn-refresh-data" class="btn-refresh">
+          <i class="fa-solid fa-arrows-rotate"></i> Refresh Data
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation Tab Buttons & Global Filters Row -->
+    <div class="controls-row">
+      <div class="tabs-nav">
+        <button class="tab-btn active" data-tab="overview">
+          <i class="fa-solid fa-chart-pie"></i> Overview
+        </button>
+        <button class="tab-btn" data-tab="salary">
+          <i class="fa-solid fa-money-bill-wave"></i> Salary
+        </button>
+        <button class="tab-btn" data-tab="expenses">
+          <i class="fa-solid fa-receipt"></i> Expenses
+        </button>
+        <button class="tab-btn" data-tab="add">
+          <i class="fa-solid fa-square-plus"></i> Record Data
+        </button>
+      </div>
+
+      <!-- Filters Group -->
+      <div class="filters-group">
+        <div class="filter-wrapper">
+          <label for="filter-time-range">Timeframe</label>
+          <select id="filter-time-range" class="form-select">
+            <option value="all">All Time</option>
+            <option value="ytd">Year to Date</option>
+            <option value="3m">Last 3 Months</option>
+            <option value="6m">Last 6 Months</option>
+            <option value="12m">Last 12 Months</option>
+          </select>
+        </div>
+
+        <!-- Salary tab specific filter -->
+        <div class="filter-wrapper tab-filter-salary" style="display: none;">
+          <label for="filter-salary-stream">Income Source</label>
+          <select id="filter-salary-stream" class="form-select">
+            <option value="all">All Income Streams</option>
+          </select>
+        </div>
+
+        <!-- Expenses tab specific filters -->
+        <div class="filter-wrapper tab-filter-expenses" style="display: none;">
+          <label for="filter-expense-category">Category</label>
+          <select id="filter-expense-category" class="form-select">
+            <option value="all">All Categories</option>
+          </select>
+        </div>
+
+        <div class="filter-wrapper tab-filter-expenses" style="display: none;">
+          <label for="filter-expense-type">Essential type</label>
+          <select id="filter-expense-type" class="form-select">
+            <option value="all">All Expenses</option>
+            <option value="Essential">Essential Only</option>
+            <option value="Non Essential">Non-Essential Only</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 1: OVERVIEW -->
+    <main id="tab-overview" class="tab-content active">
+      
+      <!-- Key KPI Cards -->
+      <section class="kpi-grid">
+        <div class="card salary-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Total Earned</span>
+            <div class="kpi-icon"><i class="fa-solid fa-arrow-trend-up"></i></div>
+          </div>
+          <div id="ov-income" class="kpi-value">₹0</div>
+          <div class="kpi-subtitle">Sum of all income streams in period</div>
+        </div>
+        
+        <div class="card expense-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Total Spent</span>
+            <div class="kpi-icon"><i class="fa-solid fa-arrow-trend-down"></i></div>
+          </div>
+          <div id="ov-expense" class="kpi-value">₹0</div>
+          <div class="kpi-subtitle">Sum of all expenses in period</div>
+        </div>
+
+        <div class="card net-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Net Savings</span>
+            <div class="kpi-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+          </div>
+          <div id="ov-net" class="kpi-value">₹0</div>
+          <div class="kpi-subtitle">Remaining net accumulation</div>
+        </div>
+
+        <div class="card net-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Savings Rate</span>
+            <div class="kpi-icon"><i class="fa-solid fa-percentage"></i></div>
+          </div>
+          <div id="ov-rate" class="kpi-value">0%</div>
+          <div class="kpi-subtitle">Percent of income saved</div>
+          <div id="ov-rate-goal" class="kpi-target-indicator"><i class="fa-solid fa-bullseye"></i> Goal: --</div>
+          <div class="progress-bar-container">
+            <div id="ov-rate-progress" class="progress-bar" style="width: 0%"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Advanced Insights & Configuration Section -->
+      <section class="charts-grid" style="grid-template-columns: 2fr 1fr; margin-bottom: 24px;">
+        <div class="card insights-card" style="margin-bottom: 0;">
+          <div class="chart-header">
+            <h3 class="chart-title"><i class="fa-solid fa-lightbulb" style="color: var(--accent-nonessential); margin-right: 8px;"></i> Smart Financial Insights</h3>
+          </div>
+          <div id="insights-container" class="insights-list" style="grid-template-columns: 1fr;">
+            <!-- Insights items will be dynamically injected here -->
+          </div>
+        </div>
+        
+        <div class="card" style="border-left: 4px solid var(--accent-net);">
+          <div class="chart-header">
+            <h3 class="chart-title"><i class="fa-solid fa-gear" style="color: var(--accent-net); margin-right: 8px;"></i> Budget Goals & Targets</h3>
+          </div>
+          <div class="targets-grid">
+            <div class="target-input-group">
+              <label for="input-target-budget">Monthly Expense Budget</label>
+              <div class="target-input-control">
+                <span>₹</span>
+                <input type="number" id="input-target-budget" value="50000" min="0" step="5000">
+              </div>
+            </div>
+            <div class="target-input-group">
+              <label for="input-target-savings">Savings Rate Goal</label>
+              <div class="target-input-control">
+                <span>%</span>
+                <input type="number" id="input-target-savings" value="30" min="0" max="100">
+              </div>
+            </div>
+            <div class="target-input-group">
+              <label for="input-target-savings-goal">Savings Target Goal</label>
+              <div class="target-input-control">
+                <span>₹</span>
+                <input type="number" id="input-target-savings-goal" value="500000" min="0" step="10000">
+              </div>
+            </div>
+          </div>
+          <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 15px; line-height: 1.4;">
+            <i class="fa-solid fa-circle-info"></i> Adjusting these updates your target indicators and displays budget threshold markers on charts in real-time.
+          </div>
+        </div>
+      </section>
+
+      <!-- Overview Charts Section -->
+      <section class="charts-grid equal">
+        <div class="card chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Income vs Expenses (Monthly)</h3>
+          </div>
+          <div id="chart-cashflow"></div>
+        </div>
+        
+        <div class="card chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Cumulative Savings Over Time</h3>
+          </div>
+          <div id="chart-networth"></div>
+        </div>
+      </section>
+    </main>
+
+    <!-- TAB 2: SALARY -->
+    <main id="tab-salary" class="tab-content">
+      
+      <!-- Salary KPI Grid -->
+      <section class="kpi-grid">
+        <div class="card salary-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Salary Earned</span>
+            <div class="kpi-icon"><i class="fa-solid fa-sack-dollar"></i></div>
+          </div>
+          <div id="sal-total" class="kpi-value">₹0</div>
+          <div class="kpi-subtitle">Total gross income in filter</div>
+        </div>
+
+        <div class="card salary-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Avg Monthly Income</span>
+            <div class="kpi-icon"><i class="fa-solid fa-calendar-check"></i></div>
+          </div>
+          <div id="sal-avg" class="kpi-value">₹0</div>
+          <div id="sal-avg-sub" class="kpi-subtitle">Calculating...</div>
+        </div>
+
+        <div class="card salary-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Top Income Stream</span>
+            <div class="kpi-icon"><i class="fa-solid fa-crown"></i></div>
+          </div>
+          <div id="sal-top" class="kpi-value" style="font-size: 1.5rem; line-height: 2.2rem; padding: 2px 0;">None</div>
+          <div id="sal-top-sub" class="kpi-subtitle">Calculating...</div>
+        </div>
+
+        <div class="card salary-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Active Streams</span>
+            <div class="kpi-icon"><i class="fa-solid fa-diagram-project"></i></div>
+          </div>
+          <div id="sal-count" class="kpi-value">0</div>
+          <div class="kpi-subtitle">Distinct sources contributing</div>
+        </div>
+      </section>
+
+      <!-- Salary Charts Section -->
+      <section class="charts-grid">
+        <div class="card chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Income Trend over time</h3>
+          </div>
+          <div id="chart-salary-trend"></div>
+        </div>
+        
+        <div class="card chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Salary Distribution by Stream</h3>
+          </div>
+          <div id="chart-salary-dist"></div>
+        </div>
+      </section>
+
+      <!-- Salary Data Table -->
+      <section class="card table-card">
+        <div class="table-header-row">
+          <h3 class="chart-title"><i class="fa-solid fa-list-check" style="color: var(--accent-salary); margin-right: 8px;"></i> Salary Transaction Log</h3>
+          
+          <div class="filters-group" style="gap: 16px;">
+            <div class="search-wrapper">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="salary-search" class="form-input search-input" placeholder="Search stream, date, amount...">
+            </div>
+            
+            <div class="filter-wrapper">
+              <select id="salary-page-limit" class="form-select" style="min-width: 80px;">
+                <option value="10">10 Rows</option>
+                <option value="25">25 Rows</option>
+                <option value="50">50 Rows</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table id="salary-table">
+            <thead>
+              <tr>
+                <th class="sortable" data-field="date" style="cursor: pointer; width: 30%">Date <i class="fa-solid fa-sort-down" style="margin-left: 6px;"></i></th>
+                <th class="sortable" data-field="stream" style="cursor: pointer; width: 45%">Income Stream <i class="fa-solid fa-sort" style="margin-left: 6px;"></i></th>
+                <th class="sortable" data-field="amount" style="cursor: pointer; text-align: right; width: 25%">Amount <i class="fa-solid fa-sort" style="margin-left: 6px;"></i></th>
+              </tr>
+            </thead>
+            <tbody id="salary-table-body">
+              <!-- Content will be injected dynamically -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-footer">
+          <div class="pagination-info">
+            Showing <span id="sal-start-entry" style="font-weight: 500; margin: 0 4px;">0</span> to 
+            <span id="sal-end-entry" style="font-weight: 500; margin: 0 4px;">0</span> of 
+            <span id="sal-total-entries" style="font-weight: 500; margin: 0 4px;">0</span> entries
+          </div>
+          <div class="pagination">
+            <button id="btn-sal-prev" class="pagination-btn" disabled><i class="fa-solid fa-angle-left"></i></button>
+            <button id="btn-sal-next" class="pagination-btn" disabled><i class="fa-solid fa-angle-right"></i></button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- TAB 3: EXPENSES -->
+    <main id="tab-expenses" class="tab-content">
+      
+      <!-- Expenses KPI Grid -->
+      <section class="kpi-grid">
+        <div class="card expense-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Expenses Total</span>
+            <div class="kpi-icon"><i class="fa-solid fa-basket-shopping"></i></div>
+          </div>
+          <div id="exp-total" class="kpi-value">₹0</div>
+          <div class="kpi-subtitle">Total outflow in filter period</div>
+        </div>
+
+        <div class="card expense-card" style="border-left: 3px solid var(--accent-expense);">
+          <div class="kpi-header">
+            <span class="kpi-title">Current Month Spend</span>
+            <div class="kpi-icon"><i class="fa-solid fa-calendar-day"></i></div>
+          </div>
+          <div id="exp-current-month" class="kpi-value">₹0</div>
+          <div id="exp-current-month-sub" class="kpi-subtitle">MTD Spending</div>
+          <div id="exp-current-month-mom" class="mom-badge neutral"><i class="fa-solid fa-minus"></i> 0.0% MoM</div>
+          <div id="exp-target-status" class="kpi-target-indicator"><i class="fa-solid fa-bullseye"></i> Budget: --</div>
+        </div>
+
+        <div class="card expense-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Avg Monthly Spend</span>
+            <div class="kpi-icon"><i class="fa-solid fa-chart-line-down" style="transform: rotate(90deg);"></i></div>
+          </div>
+          <div id="exp-avg" class="kpi-value">₹0</div>
+          <div id="exp-avg-sub" class="kpi-subtitle">Calculating...</div>
+        </div>
+
+        <div class="card expense-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Essential Ratio</span>
+            <div class="kpi-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+          </div>
+          <div id="exp-essential" class="kpi-value">0%</div>
+          <div id="exp-essential-sub" class="kpi-subtitle">Calculating...</div>
+          <div class="progress-bar-container">
+            <div id="exp-ratio-progress" class="progress-bar" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <div class="card expense-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Daily Average Spend</span>
+            <div class="kpi-icon"><i class="fa-solid fa-calendar-days"></i></div>
+          </div>
+          <div id="exp-daily" class="kpi-value">₹0</div>
+          <div id="exp-daily-sub" class="kpi-subtitle">Calculating...</div>
+        </div>
+      </section>
+
+      <!-- Expenses Charts Section -->
+      <section class="charts-grid equal">
+        <div class="card chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Expenses Trend</h3>
+          </div>
+          <div id="chart-expense-trend"></div>
+        </div>
+
+        <div class="card chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Spending Breakdown by Category</h3>
+          </div>
+          <div id="chart-expense-dist"></div>
+        </div>
+      </section>
+
+      <section class="charts-grid equal" style="margin-bottom: 24px;">
+        <div class="card chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Essential vs Non-Essential Over Time</h3>
+          </div>
+          <div id="chart-expense-split"></div>
+        </div>
+
+        <div class="card chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Category Budget Progress (Current Month MTD)</h3>
+          </div>
+          <div id="chart-expense-weekday"></div>
+        </div>
+      </section>
+
+      <!-- Expenses Data Table -->
+      <section class="card table-card">
+        <div class="table-header-row">
+          <h3 class="chart-title"><i class="fa-solid fa-list-check" style="color: var(--accent-expense); margin-right: 8px;"></i> Expense Transaction Log</h3>
+          
+          <div class="filters-group" style="gap: 16px;">
+            <div class="search-wrapper">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="expense-search" class="form-input search-input" placeholder="Search categories, description, amount...">
+            </div>
+            
+            <div class="filter-wrapper">
+              <select id="expense-page-limit" class="form-select" style="min-width: 80px;">
+                <option value="10">10 Rows</option>
+                <option value="25">25 Rows</option>
+                <option value="50">50 Rows</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table id="expense-table">
+            <thead>
+              <tr>
+                <th class="sortable" data-field="date" style="cursor: pointer; width: 15%">Date <i class="fa-solid fa-sort-down" style="margin-left: 6px;"></i></th>
+                <th class="sortable" data-field="category" style="cursor: pointer; width: 25%">Category <i class="fa-solid fa-sort" style="margin-left: 6px;"></i></th>
+                <th class="sortable" data-field="description" style="cursor: pointer; width: 35%">Description <i class="fa-solid fa-sort" style="margin-left: 6px;"></i></th>
+                <th class="sortable" data-field="type" style="cursor: pointer; width: 13%">Type <i class="fa-solid fa-sort" style="margin-left: 6px;"></i></th>
+                <th class="sortable" data-field="amount" style="cursor: pointer; text-align: right; width: 12%">Expense <i class="fa-solid fa-sort" style="margin-left: 6px;"></i></th>
+              </tr>
+            </thead>
+            <tbody id="expense-table-body">
+              <!-- Content will be injected dynamically -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-footer">
+          <div class="pagination-info">
+            Showing <span id="exp-start-entry" style="font-weight: 500; margin: 0 4px;">0</span> to 
+            <span id="exp-end-entry" style="font-weight: 500; margin: 0 4px;">0</span> of 
+            <span id="exp-total-entries" style="font-weight: 500; margin: 0 4px;">0</span> entries
+          </div>
+          <div class="pagination">
+            <button id="btn-exp-prev" class="pagination-btn" disabled><i class="fa-solid fa-angle-left"></i></button>
+            <button id="btn-exp-next" class="pagination-btn" disabled><i class="fa-solid fa-angle-right"></i></button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- TAB 4: ADD TRANSACTION -->
+    <main id="tab-add" class="tab-content">
+      <section class="charts-grid equal" style="margin-top: 10px;">
+        <!-- Left Column: Form Card -->
+        <div class="card form-card" style="margin-bottom: 0;">
+          <div class="form-toggle">
+            <button id="btn-toggle-expense" class="btn-toggle-form active expense">
+              <i class="fa-solid fa-receipt"></i> Add Expense
+            </button>
+            <button id="btn-toggle-income" class="btn-toggle-form income">
+              <i class="fa-solid fa-money-bill-wave"></i> Add Income
+            </button>
+          </div>
+
+          <!-- Expense Submission Form -->
+          <form id="form-expense" class="transaction-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="exp-input-date">Transaction Date</label>
+                <input type="date" id="exp-input-date" class="input-field" required>
+              </div>
+              <div class="form-group">
+                <label for="exp-input-amount">Amount (INR)</label>
+                <input type="number" id="exp-input-amount" class="input-field" placeholder="e.g. 1500" min="1" step="any" required>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="exp-input-category">Category</label>
+                <select id="exp-input-category" class="input-field" required>
+                  <option value="Rent">Rent</option>
+                  <option value="LOVED ONES">LOVED ONES</option>
+                  <option value="FLAT_Security">FLAT_Security</option>
+                  <option value="PE">PE</option>
+                  <option value="Travel">Travel</option>
+                  <option value="Dinner">Dinner</option>
+                  <option value="Groceries">Groceries</option>
+                  <option value="Lunch">Lunch</option>
+                  <option value="Electricity bill">Electricity bill</option>
+                  <option value="Sofa set">Sofa set</option>
+                  <option value="Baby">Baby</option>
+                  <option value="Breakfast">Breakfast</option>
+                  <option value="Water">Water</option>
+                  <option value="FAST FOOD">FAST FOOD</option>
+                  <option value="Fruits">Fruits</option>
+                  <option value="Jio Recharge">Jio Recharge</option>
+                  <option value="Entertainment">Entertainment</option>
+                  <option value="Porter">Porter</option>
+                  <option value="Haircut/Shaving">Haircut/Shaving</option>
+                  <option value="Kapiva products">Kapiva products</option>
+                  <option value="Donation">Donation</option>
+                  <option value="Uncategorized">Uncategorized</option>
+                  <option value="custom">Custom Category...</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="exp-input-type">Expense Type</label>
+                <select id="exp-input-type" class="input-field" required>
+                  <option value="Essential">Essential Only</option>
+                  <option value="Non Essential">Non-Essential Only</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Custom Category Input field (hidden by default) -->
+            <div id="exp-custom-cat-group" class="form-group" style="display: none;">
+              <label for="exp-input-custom-category">Write Custom Category</label>
+              <input type="text" id="exp-input-custom-category" class="input-field" placeholder="e.g. Subscriptions">
+            </div>
+
+            <div class="form-group">
+              <label for="exp-input-desc">Description</label>
+              <input type="text" id="exp-input-desc" class="input-field" placeholder="Short description of the item..." required>
+            </div>
+
+            <button type="submit" id="btn-submit-expense" class="btn-submit">
+              <div class="spinner"></div>
+              <span><i class="fa-solid fa-plus" style="margin-right: 6px;"></i> Submit Expense</span>
+            </button>
+          </form>
+
+          <!-- Income Submission Form (Hidden by default) -->
+          <form id="form-income" class="transaction-form" style="display: none;">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="inc-input-date">Transaction Date</label>
+                <input type="date" id="inc-input-date" class="input-field" required>
+              </div>
+              <div class="form-group">
+                <label for="inc-input-amount">Amount (INR)</label>
+                <input type="number" id="inc-input-amount" class="input-field" placeholder="e.g. 50000" min="1" step="any" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="inc-input-stream">Income Stream</label>
+              <select id="inc-input-stream" class="input-field" required>
+                <option value="KAPIVA">KAPIVA</option>
+                <option value="BHANZU">BHANZU</option>
+                <option value="CODINGAL">CODINGAL</option>
+                <option value="OMER">OMER</option>
+                <option value="Aanya">Aanya</option>
+                <option value="AARAVARDIYA">AARAVARDIYA</option>
+                <option value="ShrinayShrihaan">ShrinayShrihaan</option>
+                <option value="ITRREFUND">ITRREFUND</option>
+                <option value="Sara">Sara</option>
+                <option value="Adam">Adam</option>
+                <option value="UPGRADE">UPGRADE</option>
+                <option value="Interest">Interest</option>
+                <option value="TEACHERCASHFREE">TEACHERCASHFREE</option>
+                <option value="Relatives">Relatives</option>
+                <option value="Dividend">Dividend</option>
+                <option value="Kapiva Products">Kapiva Products</option>
+                <option value="custom">Custom Stream...</option>
+              </select>
+            </div>
+
+            <!-- Custom Stream Input field (hidden by default) -->
+            <div id="inc-custom-stream-group" class="form-group" style="display: none;">
+              <label for="inc-input-custom-stream">Write Custom Stream</label>
+              <input type="text" id="inc-input-custom-stream" class="input-field" placeholder="e.g. Freelancing">
+            </div>
+
+            <button type="submit" id="btn-submit-income" class="btn-submit">
+              <div class="spinner"></div>
+              <span><i class="fa-solid fa-plus" style="margin-right: 6px;"></i> Submit Income</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Right Column: Settings & History -->
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+          <!-- Apps Script Config Card -->
+          <div class="card form-card" style="margin-bottom: 0; padding: 20px;">
+            <div class="chart-header" style="margin-bottom: 12px;">
+              <h3 class="chart-title"><i class="fa-solid fa-gears" style="color: var(--accent-essential); margin-right: 8px;"></i> Write API Configuration</h3>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="input-api-url">Google Apps Script Web App URL</label>
+              <input type="url" id="input-api-url" class="input-field" placeholder="https://script.google.com/macros/s/.../exec">
+              <p style="font-size: 0.72rem; color: var(--text-muted); margin: 6px 0 0 0;">
+                Provide the URL obtained from deploying the Apps Script web app to enable data writing.
+              </p>
+            </div>
+          </div>
+
+          <!-- Recent Additions Card -->
+          <div class="card form-card" style="margin-bottom: 0; flex: 1; min-height: 200px; display: flex; flex-direction: column;">
+            <div class="chart-header" style="margin-bottom: 16px;">
+              <h3 class="chart-title"><i class="fa-solid fa-history" style="color: var(--accent-salary); margin-right: 8px;"></i> Session Submissions</h3>
+            </div>
+            <div style="flex: 1; overflow-y: auto;">
+              <ul id="recent-submissions-list" class="recent-list">
+                <li style="text-align: center; color: var(--text-muted); padding: 40px 0; font-size: 0.8rem;">
+                  No submissions in this session yet.
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Instructions Card -->
+          <div class="card form-card" style="margin-bottom: 0; padding: 20px;">
+            <div class="chart-header" style="margin-bottom: 12px; cursor: pointer;" id="accordion-setup-trigger">
+              <h3 class="chart-title"><i class="fa-solid fa-circle-info" style="color: var(--accent-nonessential); margin-right: 8px;"></i> How to Setup Sheets Sync?</h3>
+              <i class="fa-solid fa-chevron-down" id="accordion-chevron" style="color: var(--text-muted); font-size: 0.8rem;"></i>
+            </div>
+            <div id="accordion-setup-content" class="setup-instructions" style="display: none; margin-top: 10px;">
+              <ol>
+                <li>In your Google Sheet, click on <strong>Extensions</strong> &gt; <strong>Apps Script</strong>.</li>
+                <li>Delete any code in the editor and copy-paste the code snippet below.</li>
+                <li>Click <strong>Save</strong>. Then click <strong>Deploy</strong> &gt; <strong>New Deployment</strong>.</li>
+                <li>Select type: <strong>Web App</strong>. Set "Execute as": <strong>Me</strong>. Set "Who has access": <strong>Anyone</strong> (this allows the client-side fetch to reach the writer).</li>
+                <li>Click <strong>Deploy</strong>, authorize the permissions, and copy the **Web App URL**.</li>
+                <li>Paste the URL into the **Write API Configuration** card above!</li>
+              </ol>
+              <div class="code-box-header" style="margin-top: 15px;">
+                <span>AppsScript Code</span>
+                <button class="btn-copy-code" id="btn-copy-code"><i class="fa-solid fa-copy"></i> Copy Code</button>
+              </div>
+              <div class="code-box">
+                <pre id="code-snippet-pre">
+function doPost(e) {
+  try {
+    const data = JSON.parse(e.postData.contents);
+    const salarySheetId = "1WLUQCxL1VB0seHd9LAnTWK4P3MgGMaYrbTSrBSvVHNk";
+    const expenseSheetId = "1vXGxv98Saw0MfzGOfgB_QBWr9ezMWF1SQyffk2gIyGw";
+    
+    // Parse Date YYYY-MM-DD
+    const parts = data.date.split('-');
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // 0-indexed
+    const day = parseInt(parts[2], 10);
+    
+    // Format: dd/mm/yyyy
+    const dd = String(day).padStart(2, '0');
+    const mm = String(month + 1).padStart(2, '0');
+    const formattedDate = dd + '/' + mm + '/' + year;
+    
+    // Format: mmm-yy (e.g. Aug-26)
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const formattedMonthName = monthNames[month] + '-' + String(year).slice(-2);
+    
+    // Action handler: DELETE row
+    if (data.action === "delete") {
+      if (data.sheetType === "salary") {
+        const ss = SpreadsheetApp.openById(salarySheetId);
+        const sheet = ss.getSheetByName("UPDATED_INCOME");
+        const lastRow = sheet.getLastRow();
+        if (lastRow <= 1) throw new Error("No data in sheet to delete");
+        const values = sheet.getRange(1, 1, lastRow, 5).getValues();
+        
+        // Scan from bottom to top to find the matching row
+        for (let i = lastRow - 1; i >= 1; i--) {
+          let cellDateStr = "";
+          if (values[i][0] instanceof Date) {
+            cellDateStr = Utilities.formatDate(values[i][0], Session.getScriptTimeZone(), "dd/MM/yyyy");
+          } else {
+            cellDateStr = String(values[i][0]).trim();
+          }
+          const cellStream = String(values[i][2]).trim();
+          const cellAmount = Number(values[i][3]);
+          
+          if (cellDateStr === formattedDate && cellStream === String(data.stream).trim() && cellAmount === Number(data.amount)) {
+            sheet.deleteRow(i + 1);
+            return ContentService.createTextOutput(JSON.stringify({ status: "success", message: "Income deleted successfully!" }))
+              .setMimeType(ContentService.MimeType.JSON)
+              .setHeader("Access-Control-Allow-Origin", "*");
+          }
+        }
+        throw new Error("Income record not found for deletion");
+        
+      } else if (data.sheetType === "expense") {
+        const ss = SpreadsheetApp.openById(expenseSheetId);
+        const sheet = ss.getSheetByName("Looker's Studio_Update");
+        const lastRow = sheet.getLastRow();
+        if (lastRow <= 1) throw new Error("No data in sheet to delete");
+        const values = sheet.getRange(1, 1, lastRow, 6).getValues();
+        
+        // Scan from bottom to top to find the matching row
+        for (let i = lastRow - 1; i >= 1; i--) {
+          let cellDateStr = "";
+          if (values[i][0] instanceof Date) {
+            cellDateStr = Utilities.formatDate(values[i][0], Session.getScriptTimeZone(), "dd/MM/yyyy");
+          } else {
+            cellDateStr = String(values[i][0]).trim();
+          }
+          const cellAmount = Number(values[i][2]);
+          const cellCategory = String(values[i][3]).trim();
+          const cellDesc = String(values[i][4]).trim();
+          
+          if (cellDateStr === formattedDate && cellAmount === Number(data.amount) && cellCategory === String(data.category).trim() && cellDesc === String(data.description).trim()) {
+            sheet.deleteRow(i + 1);
+            return ContentService.createTextOutput(JSON.stringify({ status: "success", message: "Expense deleted successfully!" }))
+              .setMimeType(ContentService.MimeType.JSON)
+              .setHeader("Access-Control-Allow-Origin", "*");
+          }
+        }
+        throw new Error("Expense record not found for deletion");
+      }
+    }
+    
+    // Action handler: INSERT row (default)
+    if (data.sheetType === "salary") {
+      const ss = SpreadsheetApp.openById(salarySheetId);
+      const sheet = ss.getSheetByName("UPDATED_INCOME");
+      
+      // Target Schema: Date | Month | Income Stream | Amount | Month_Date
+      const firstDayOfMonthDate = '01/' + mm + '/' + year;
+      sheet.appendRow([
+        formattedDate,
+        formattedMonthName,
+        data.stream,
+        Number(data.amount),
+        firstDayOfMonthDate
+      ]);
+      
+      return ContentService.createTextOutput(JSON.stringify({ status: "success", message: "Income recorded successfully!" }))
+        .setMimeType(ContentService.MimeType.JSON)
+        .setHeader("Access-Control-Allow-Origin", "*");
+        
+    } else if (data.sheetType === "expense") {
+      const ss = SpreadsheetApp.openById(expenseSheetId);
+      const sheet = ss.getSheetByName("Looker's Studio_Update");
+      
+      // Target Schema: Date | Month | Expense | Reason | Description | Essential/Non
+      sheet.appendRow([
+        formattedDate,
+        formattedMonthName,
+        Number(data.amount),
+        data.category,
+        data.description,
+        data.type
+      ]);
+      
+      return ContentService.createTextOutput(JSON.stringify({ status: "success", message: "Expense recorded successfully!" }))
+        .setMimeType(ContentService.MimeType.JSON)
+        .setHeader("Access-Control-Allow-Origin", "*");
+    }
+    
+    throw new Error("Invalid sheet type: " + data.sheetType);
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: error.toString() }))
+      .setMimeType(ContentService.MimeType.JSON)
+      .setHeader("Access-Control-Allow-Origin", "*");
+  }
+}
+
+function doOptions(e) {
+  return ContentService.createTextOutput("")
+    .setHeader("Access-Control-Allow-Origin", "*")
+    .setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+    .setHeader("Access-Control-Allow-Headers", "Content-Type");
+}</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+  </div>
+
+  <!-- Custom Page Routing script linking the DOM with app logic -->
+  <script>
+    // Tab Specific filters hiding / showing logic
+    document.addEventListener('DOMContentLoaded', () => {
+      const tabButtons = document.querySelectorAll('.tab-btn');
+      tabButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const activeTab = btn.getAttribute('data-tab');
+          
+          // Hide all tab specific filters
+          document.querySelectorAll('.tab-filter-salary').forEach(el => el.style.display = 'none');
+          document.querySelectorAll('.tab-filter-expenses').forEach(el => el.style.display = 'none');
+          
+          // Show relevant filters
+          if (activeTab === 'salary') {
+            document.querySelectorAll('.tab-filter-salary').forEach(el => el.style.display = 'flex');
+          } else if (activeTab === 'expenses') {
+            document.querySelectorAll('.tab-filter-expenses').forEach(el => el.style.display = 'flex');
+          }
+        });
+      });
+    });
+  </script>
+  <!-- Glassmorphic Modal for Others Breakdown -->
+  <div id="breakdown-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-title">Breakdown of Others</h3>
+        <button id="modal-close" class="btn-close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <table class="modal-table">
+          <thead>
+            <tr>
+              <th id="modal-col-name">Name</th>
+              <th style="text-align: right;">Total Amount</th>
+            </tr>
+          </thead>
+          <tbody id="modal-table-body">
+            <!-- dynamic rows -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast notifications container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
