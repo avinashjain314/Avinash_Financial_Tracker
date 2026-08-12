@@ -238,6 +238,23 @@
           <div id="sal-avg-sub" class="kpi-subtitle">Calculating...</div>
         </div>
 
+        <div class="card salary-card" style="border-left: 3px solid var(--accent-salary);">
+          <div class="kpi-header">
+            <span class="kpi-title">Current Month Income</span>
+            <div class="kpi-icon"><i class="fa-solid fa-calendar-days"></i></div>
+          </div>
+          <div id="sal-current-month" class="kpi-value">₹0</div>
+          <div id="sal-current-month-sub" class="kpi-subtitle">MTD Earnings</div>
+          <div class="mom-badge-container" style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
+            <div id="sal-current-month-mom" class="mom-badge neutral">
+              <i class="fa-solid fa-minus"></i> 0.0% MoM
+            </div>
+            <div id="sal-last-month-amount" style="font-size: 0.72rem; color: var(--text-muted);">
+              Last Month: ₹0
+            </div>
+          </div>
+        </div>
+
         <div class="card salary-card">
           <div class="kpi-header">
             <span class="kpi-title">Top Income Stream</span>
@@ -347,6 +364,18 @@
           <div id="exp-current-month-sub" class="kpi-subtitle">MTD Spending</div>
           <div id="exp-current-month-mom" class="mom-badge neutral"><i class="fa-solid fa-minus"></i> 0.0% MoM</div>
           <div id="exp-target-status" class="kpi-target-indicator"><i class="fa-solid fa-bullseye"></i> Budget: --</div>
+        </div>
+
+        <div class="card expense-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Last Month Expenses</span>
+            <div class="kpi-icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
+          </div>
+          <div id="exp-last-month" class="kpi-value">₹0</div>
+          <div id="exp-last-month-sub" class="kpi-subtitle">Total outflow last month</div>
+          <div id="exp-last-month-compare" style="font-size: 0.72rem; color: var(--text-muted); margin-top: 6px;">
+            Full Month Total
+          </div>
         </div>
 
         <div class="card expense-card">

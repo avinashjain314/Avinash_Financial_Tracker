@@ -45,7 +45,8 @@ const state = {
     savingsRate: Number(localStorage.getItem('target_savings_rate')) || 30,
     savingsGoal: Number(localStorage.getItem('target_savings_goal')) || 500000
   },
-apiScriptUrl: 'https://script.google.com/macros/s/AKfycbzi3pqCjBnthJJ0nscaVJemPwYrvV5JOIQGLakV_k13xHoe8Kb63uexBdJRRw5HkUNM/exec',  sessionSubmissions: [],
+  apiScriptUrl: 'https://script.google.com/macros/s/AKfycbzi3pqCjBnthJJ0nscaVJemPwYrvV5JOIQGLakV_k13xHoe8Kb63uexBdJRRw5HkUNM/exec',
+  sessionSubmissions: [],
   charts: {}
 };
 
@@ -424,6 +425,67 @@ function renderAllKPIs() {
   const avgSal = salMonths.size > 0 ? totalIncome / salMonths.size : 0;
   document.getElementById('sal-avg').textContent = formatter.currency(avgSal);
   document.getElementById('sal-avg-sub').textContent = `Across ${salMonths.size} active month(s)`;
+
+  // Calculate Current vs Last Month Salary
+  let salTodayDate = new Date();
+  if (state.salaryData.length > 0) {
+    const allSalDates = state.salaryData.map(d => d.date.getTime());
+    salTodayDate = new Date(Math.max(...allSalDates));
+  }
+  const salCurrentMonth = salTodayDate.getMonth();
+  const salCurrentYear = salTodayDate.getFullYear();
+
+  let salCurrentMonthSum = 0;
+  state.salaryData.forEach(d => {
+    if (d.date && d.date.getMonth() === salCurrentMonth && d.date.getFullYear() === salCurrentYear) {
+      salCurrentMonthSum += d.amount;
+    }
+  });
+
+  let salPrevMonth = salCurrentMonth - 1;
+  let salPrevYear = salCurrentYear;
+  if (salPrevMonth < 0) {
+    salPrevMonth = 11;
+    salPrevYear = salCurrentYear - 1;
+  }
+
+  let salPrevMonthSum = 0;
+  state.salaryData.forEach(d => {
+    if (d.date && d.date.getMonth() === salPrevMonth && d.date.getFullYear() === salPrevYear) {
+      salPrevMonthSum += d.amount;
+    }
+  });
+
+  const salCurrentMonthEl = document.getElementById('sal-current-month');
+  if (salCurrentMonthEl) {
+    salCurrentMonthEl.textContent = formatter.currency(salCurrentMonthSum);
+  }
+  const salCurrentMonthSubEl = document.getElementById('sal-current-month-sub');
+  if (salCurrentMonthSubEl) {
+    const monthName = salTodayDate.toLocaleDateString([], { month: 'short', year: '2-digit' });
+    salCurrentMonthSubEl.textContent = `Earned in ${monthName}`;
+  }
+
+  const salMomEl = document.getElementById('sal-current-month-mom');
+  if (salMomEl) {
+    if (salPrevMonthSum > 0) {
+      const pctChange = ((salCurrentMonthSum - salPrevMonthSum) / salPrevMonthSum) * 100;
+      const isIncrease = pctChange >= 0;
+      const badgeClass = isIncrease ? 'good' : 'bad'; // increase in income is good!
+      const arrow = isIncrease ? 'fa-arrow-up' : 'fa-arrow-down';
+      const sign = isIncrease ? '+' : '';
+      salMomEl.className = `mom-badge ${badgeClass}`;
+      salMomEl.innerHTML = `<i class="fa-solid ${arrow}"></i> ${sign}${pctChange.toFixed(1)}% MoM`;
+    } else {
+      salMomEl.className = 'mom-badge neutral';
+      salMomEl.innerHTML = '<i class="fa-solid fa-minus"></i> 0.0% MoM';
+    }
+  }
+
+  const salLastMonthAmtEl = document.getElementById('sal-last-month-amount');
+  if (salLastMonthAmtEl) {
+    salLastMonthAmtEl.textContent = `Last Month: ${formatter.currency(salPrevMonthSum)}`;
+  }
   
   // Top Stream
   const streamTotals = {};
@@ -565,6 +627,34 @@ function renderAllKPIs() {
       budgetStatusEl.className = 'kpi-target-indicator exceeded';
       budgetStatusEl.innerHTML += ` <span style="font-weight:600;">(Over by ${formatter.currency(currentMonthMtdSum - state.targets.budget)})</span>`;
     }
+  }
+
+  // 8. Calculate and populate Last Month's full expenses total
+  let expPrevMonthFullSum = 0;
+  state.expenseData.forEach(d => {
+    if (d.date && d.date.getMonth() === prevMonth && d.date.getFullYear() === prevYear) {
+      expPrevMonthFullSum += d.amount;
+    }
+  });
+
+  const expLastMonthEl = document.getElementById('exp-last-month');
+  if (expLastMonthEl) {
+    expLastMonthEl.textContent = formatter.currency(expPrevMonthFullSum);
+  }
+
+  const expLastMonthSubEl = document.getElementById('exp-last-month-sub');
+  if (expLastMonthSubEl) {
+    const prevMonthDate = new Date(prevYear, prevMonth, 1);
+    const prevMonthName = prevMonthDate.toLocaleDateString([], { month: 'short', year: '2-digit' });
+    expLastMonthSubEl.textContent = `Total spent in ${prevMonthName}`;
+  }
+
+  const expLastMonthCompareEl = document.getElementById('exp-last-month-compare');
+  if (expLastMonthCompareEl) {
+    const diff = currentMonthMtdSum - expPrevMonthFullSum;
+    const diffStr = diff >= 0 ? `+${formatter.currency(diff)}` : `-${formatter.currency(Math.abs(diff))}`;
+    expLastMonthCompareEl.textContent = `${diff >= 0 ? 'Exceeded' : 'Under'} last month by ${formatter.currency(Math.abs(diff))}`;
+    expLastMonthCompareEl.style.color = diff >= 0 ? 'var(--accent-expense)' : 'var(--accent-salary)';
   }
 }
 
@@ -2066,15 +2156,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-// Web App API URL - permanently configured
-const inputApiUrl = document.getElementById('input-api-url');
-
-if (inputApiUrl) {
-  inputApiUrl.value = state.apiScriptUrl;
-  inputApiUrl.readOnly = true;
-  inputApiUrl.style.cursor = 'not-allowed';
-  inputApiUrl.title = 'Google Apps Script URL is permanently configured';
-}
+  // Web App API URL input configuration
+  const inputApiUrl = document.getElementById('input-api-url');
+  if (inputApiUrl) {
+    inputApiUrl.value = state.apiScriptUrl;
+    inputApiUrl.addEventListener('input', (e) => {
+      state.apiScriptUrl = e.target.value.trim();
+      localStorage.setItem('google_apps_script_url', state.apiScriptUrl);
+    });
+  }
 
   // Submit Expense Form
   if (formExpense) {
