@@ -365,6 +365,9 @@ function matchTimeRange(date, range) {
   } else if (range === '12m') {
     const limit = new Date(ref.getFullYear(), ref.getMonth() - 12, ref.getDate());
     return itemTime >= limit.getTime();
+  } else if (range === 'blr') {
+    const limit = new Date(2025, 8, 1); // September 1, 2025
+    return itemTime >= limit.getTime();
   } else if (range === 'custom') {
     if (state.filters.startDate) {
       const start = new Date(state.filters.startDate);
@@ -1070,7 +1073,7 @@ function renderAllCharts() {
   };
 
   // ==========================================
-  // CHART 1: Overview - Income vs Expense (Mixed Column + Line)
+  // CHART 1: Overview - Income vs Expense (Grouped Bar)
   // ==========================================
   const cashflowEl = document.getElementById('chart-cashflow');
   if (cashflowEl && state.currentTab === 'overview') {
@@ -1078,32 +1081,26 @@ function renderAllCharts() {
       ...baseChartOptions,
       chart: {
         ...baseChartOptions.chart,
-        type: 'line',
-        height: 340
+        type: 'bar',
+        height: 320
       },
-      colors: ['#10b981', '#f43f5e', '#f59e0b'],
+      colors: ['#10b981', '#f43f5e'],
       series: [
-        { name: 'Income', type: 'column', data: monthlyData.map(d => d.income) },
-        { name: 'Expense', type: 'column', data: monthlyData.map(d => d.expense) },
-        { name: '% of Salary Spent', type: 'line', data: monthlyData.map(d => d.income > 0 ? Math.round((d.expense / d.income) * 100) : 0) }
+        { name: 'Income', data: monthlyData.map(d => d.income) },
+        { name: 'Expense', data: monthlyData.map(d => d.expense) }
       ],
       xaxis: {
         categories: months
       },
-      stroke: {
-        width: [0, 0, 3],
-        curve: 'smooth'
-      },
       dataLabels: {
         enabled: true,
-        enabledOnSeries: [0, 1], // Only show labels on the Income and Expense bars
         style: {
           fontSize: '9px',
           fontFamily: 'Inter, sans-serif',
           fontWeight: 600,
           colors: ['#ffffff']
         },
-        offsetY: -15,
+        offsetY: -20,
         formatter: function(val) {
           if (!val) return '';
           return val >= 100000 ? (val / 100000).toFixed(1) + 'L' : 
@@ -1121,49 +1118,86 @@ function renderAllCharts() {
           }
         }
       },
-      fill: {
-        opacity: [0.85, 0.85, 1]
+      stroke: {
+        show: true,
+        width: 2,
+        colors: ['transparent']
       },
-      yaxis: [
-        {
-          title: {
-            text: 'Amount (INR)',
-            style: { color: '#94a3b8' }
-          },
-          labels: {
-            formatter: (v) => formatter.currency(v),
-            style: { colors: '#94a3b8' }
-          }
-        },
-        {
-          opposite: true,
-          title: {
-            text: '% of Salary Spent',
-            style: { color: '#f59e0b' }
-          },
-          labels: {
-            formatter: (v) => `${Math.round(v)}%`,
-            style: { colors: '#f59e0b' }
-          },
-          min: 0
-        }
-      ],
-      tooltip: {
-        theme: 'dark',
-        shared: true,
-        intersect: false,
-        y: {
-          formatter: function (val, { seriesIndex }) {
-            if (seriesIndex === 2) {
-              return `${val}% of salary`;
-            }
-            return formatter.currency(Math.round(val));
-          }
+      fill: { opacity: 0.95 },
+      yaxis: {
+        labels: {
+          formatter: (v) => formatter.currency(v)
         }
       }
     };
     state.charts.cashflow = new ApexCharts(cashflowEl, options);
     state.charts.cashflow.render();
+  }
+
+  // ==========================================
+  // CHART 1B: Overview - % of Salary Spent (Monthly Trend Line)
+  // ==========================================
+  const spentRatioEl = document.getElementById('chart-salary-spent-ratio');
+  if (spentRatioEl && state.currentTab === 'overview') {
+    const ratioData = monthlyData.map(d => d.income > 0 ? Math.round((d.expense / d.income) * 100) : 0);
+
+    const options = {
+      ...baseChartOptions,
+      chart: {
+        ...baseChartOptions.chart,
+        type: 'line',
+        height: 280
+      },
+      colors: ['#f59e0b'],
+      series: [{ name: '% of Salary Spent', data: ratioData }],
+      xaxis: {
+        categories: months
+      },
+      stroke: {
+        curve: 'smooth',
+        width: 3
+      },
+      dataLabels: {
+        enabled: true,
+        style: {
+          fontSize: '10px',
+          fontFamily: 'Inter, sans-serif',
+          fontWeight: 600,
+          colors: ['#f8fafc']
+        },
+        background: {
+          enabled: true,
+          foreColor: '#0f172a',
+          padding: 4,
+          borderRadius: 4,
+          borderWidth: 1,
+          borderColor: 'rgba(255, 255, 255, 0.1)'
+        },
+        formatter: (v) => `${v}%`
+      },
+      markers: {
+        size: 5,
+        hover: { size: 7 }
+      },
+      yaxis: {
+        title: {
+          text: 'Percentage Spent (%)',
+          style: { color: '#94a3b8' }
+        },
+        labels: {
+          formatter: (v) => `${Math.round(v)}%`
+        },
+        min: 0
+      },
+      tooltip: {
+        theme: 'dark',
+        y: {
+          formatter: (val) => `${val}% of income`
+        }
+      }
+    };
+    state.charts.spentRatio = new ApexCharts(spentRatioEl, options);
+    state.charts.spentRatio.render();
   }
 
   // ==========================================
