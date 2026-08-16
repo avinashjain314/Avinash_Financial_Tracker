@@ -1139,7 +1139,13 @@ function renderAllCharts() {
   // ==========================================
   const spentRatioEl = document.getElementById('chart-salary-spent-ratio');
   if (spentRatioEl && state.currentTab === 'overview') {
-    const ratioData = monthlyData.map(d => d.income > 0 ? Math.round((d.expense / d.income) * 100) : 0);
+    // Exclude the last month (which is the current/incomplete month) to avoid massive percentage spikes
+    let completeMonthlyData = monthlyData;
+    if (monthlyData.length > 1) {
+      completeMonthlyData = monthlyData.slice(0, -1);
+    }
+    const completeMonths = completeMonthlyData.map(d => d.label);
+    const ratioData = completeMonthlyData.map(d => d.income > 0 ? Math.round((d.expense / d.income) * 100) : 0);
 
     const options = {
       ...baseChartOptions,
@@ -1151,7 +1157,7 @@ function renderAllCharts() {
       colors: ['#f59e0b'],
       series: [{ name: '% of Salary Spent', data: ratioData }],
       xaxis: {
-        categories: months
+        categories: completeMonths
       },
       stroke: {
         curve: 'smooth',
