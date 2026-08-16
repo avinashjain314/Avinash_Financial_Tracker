@@ -1605,6 +1605,157 @@ function renderAllCharts() {
     state.charts.expenseWeekday = new ApexCharts(weekdayEl, options);
     state.charts.expenseWeekday.render();
   }
+
+  // ==========================================
+  // CHART 9: Expenses - Spending by Budget Buckets (Donut)
+  // ==========================================
+  const bucketsEl = document.getElementById('chart-expense-buckets');
+  if (bucketsEl && state.currentTab === 'expenses') {
+    // Helper to categorize raw category to user's defined bucket
+    const getBucketForCategory = (category) => {
+      const cat = String(category).trim().toLowerCase();
+      if (['lunch', 'dinner', 'breakfast', 'fast food'].includes(cat)) {
+        return 'Food';
+      }
+      if (cat === 'rent') {
+        return 'Rent';
+      }
+      if (['travel', 'porter'].includes(cat)) {
+        return 'Travel';
+      }
+      if (['pe', 'haircut/shaving', 'sofa set'].includes(cat)) {
+        return 'Personal Expenses';
+      }
+      if (['jio recharge', 'electricity bill', 'water'].includes(cat)) {
+        return 'Recharge/Bills';
+      }
+      if (['groceries', 'fruits'].includes(cat)) {
+        return 'Groceries/Fruits';
+      }
+      if (cat === 'loved ones') {
+        return 'Loved ones';
+      }
+      if (cat === 'baby') {
+        return 'Baby';
+      }
+      return 'Others';
+    };
+
+    // Calculate total spend per bucket
+    const bucketTotals = {
+      'Food': 0,
+      'Rent': 0,
+      'Travel': 0,
+      'Personal Expenses': 0,
+      'Recharge/Bills': 0,
+      'Groceries/Fruits': 0,
+      'Loved ones': 0,
+      'Baby': 0,
+      'Others': 0
+    };
+
+    state.filteredExpense.forEach(d => {
+      const bucket = getBucketForCategory(d.category);
+      bucketTotals[bucket] += d.amount;
+    });
+
+    const bucketLabels = Object.keys(bucketTotals).filter(b => bucketTotals[b] > 0);
+    const bucketValues = bucketLabels.map(b => Math.round(bucketTotals[b]));
+
+    const options = {
+      ...baseChartOptions,
+      chart: {
+        ...baseChartOptions.chart,
+        type: 'donut',
+        height: 340
+      },
+      colors: [
+        '#10b981', // Food - Emerald
+        '#6366f1', // Rent - Indigo
+        '#0ea5e9', // Travel - Sky
+        '#f43f5e', // Personal - Rose
+        '#f59e0b', // Recharge - Amber
+        '#84cc16', // Groceries - Lime
+        '#ec4899', // Loved ones - Pink
+        '#06b6d4', // Baby - Cyan
+        '#94a3b8'  // Others - Slate
+      ],
+      series: bucketValues,
+      labels: bucketLabels,
+      plotOptions: {
+        pie: {
+          donut: {
+            size: '70%',
+            background: 'transparent',
+            labels: {
+              show: true,
+              name: {
+                show: true,
+                fontSize: '12px',
+                fontFamily: 'Outfit, sans-serif',
+                fontWeight: 600,
+                color: '#94a3b8',
+                offsetY: -8
+              },
+              value: {
+                show: true,
+                fontSize: '18px',
+                fontFamily: 'Outfit, sans-serif',
+                fontWeight: 700,
+                color: '#f8fafc',
+                offsetY: 8,
+                formatter: (val) => formatter.currency(val)
+              },
+              total: {
+                show: true,
+                label: 'Total Outflow',
+                color: '#94a3b8',
+                fontSize: '11px',
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 500,
+                formatter: function (w) {
+                  const total = w.globals.seriesTotals.reduce((a, b) => a + b, 0);
+                  return formatter.currency(total);
+                }
+              }
+            }
+          }
+        }
+      },
+      dataLabels: {
+        enabled: true,
+        formatter: function (val, opts) {
+          return val.toFixed(1) + '%';
+        },
+        style: {
+          fontSize: '10px',
+          fontFamily: 'Inter, sans-serif',
+          fontWeight: 600
+        },
+        dropShadow: { enabled: false }
+      },
+      legend: {
+        position: 'bottom',
+        fontSize: '10px',
+        fontFamily: 'Inter, sans-serif',
+        fontWeight: 500,
+        labels: { colors: '#94a3b8' },
+        markers: { radius: 12 },
+        itemMargin: { horizontal: 8, vertical: 4 }
+      },
+      stroke: {
+        show: true,
+        width: 2,
+        colors: ['#0f172a']
+      }
+    };
+
+    if (state.charts.expenseBuckets) {
+      state.charts.expenseBuckets.destroy();
+    }
+    state.charts.expenseBuckets = new ApexCharts(bucketsEl, options);
+    state.charts.expenseBuckets.render();
+  }
 }
 
 // Render Interactive tables
