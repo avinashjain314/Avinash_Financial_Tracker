@@ -23,7 +23,7 @@ const state = {
   latestDate: new Date(),
   currentTab: 'overview',
   filters: {
-    timeRange: 'all',
+    timeRange: 'blr',
     startDate: null,
     endDate: null,
     salaryStream: 'all',
