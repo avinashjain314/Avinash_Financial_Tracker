@@ -2296,6 +2296,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const inputEnd = document.getElementById('filter-end-date');
 
   if (timeRangeFilter) {
+    timeRangeFilter.value = state.filters.timeRange;
+  }
+
+  if (timeRangeFilter) {
     timeRangeFilter.addEventListener('change', (e) => {
       state.filters.timeRange = e.target.value;
       
