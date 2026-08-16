@@ -419,6 +419,12 @@ function renderAllKPIs() {
   
   const rateVal = document.getElementById('ov-rate');
   rateVal.textContent = formatter.percent(savingsRate);
+
+  const rateSubVal = document.getElementById('ov-rate-sub');
+  if (rateSubVal) {
+    const spentRate = totalIncome > 0 ? (totalExpense / totalIncome) * 100 : 0;
+    rateSubVal.textContent = `Saved: ${savingsRate.toFixed(1)}% | Spent: ${spentRate.toFixed(1)}% of salary`;
+  }
   
   // Progress Bar for savings rate
   const rateProgress = document.getElementById('ov-rate-progress');
@@ -1064,7 +1070,7 @@ function renderAllCharts() {
   };
 
   // ==========================================
-  // CHART 1: Overview - Income vs Expense (Grouped Bar)
+  // CHART 1: Overview - Income vs Expense (Mixed Column + Line)
   // ==========================================
   const cashflowEl = document.getElementById('chart-cashflow');
   if (cashflowEl && state.currentTab === 'overview') {
@@ -1072,26 +1078,32 @@ function renderAllCharts() {
       ...baseChartOptions,
       chart: {
         ...baseChartOptions.chart,
-        type: 'bar',
-        height: 320
+        type: 'line',
+        height: 340
       },
-      colors: ['#10b981', '#f43f5e'],
+      colors: ['#10b981', '#f43f5e', '#f59e0b'],
       series: [
-        { name: 'Income', data: monthlyData.map(d => d.income) },
-        { name: 'Expense', data: monthlyData.map(d => d.expense) }
+        { name: 'Income', type: 'column', data: monthlyData.map(d => d.income) },
+        { name: 'Expense', type: 'column', data: monthlyData.map(d => d.expense) },
+        { name: '% of Salary Spent', type: 'line', data: monthlyData.map(d => d.income > 0 ? Math.round((d.expense / d.income) * 100) : 0) }
       ],
       xaxis: {
         categories: months
       },
+      stroke: {
+        width: [0, 0, 3],
+        curve: 'smooth'
+      },
       dataLabels: {
         enabled: true,
+        enabledOnSeries: [0, 1], // Only show labels on the Income and Expense bars
         style: {
           fontSize: '9px',
           fontFamily: 'Inter, sans-serif',
           fontWeight: 600,
           colors: ['#ffffff']
         },
-        offsetY: -20,
+        offsetY: -15,
         formatter: function(val) {
           if (!val) return '';
           return val >= 100000 ? (val / 100000).toFixed(1) + 'L' : 
@@ -1109,15 +1121,44 @@ function renderAllCharts() {
           }
         }
       },
-      stroke: {
-        show: true,
-        width: 2,
-        colors: ['transparent']
+      fill: {
+        opacity: [0.85, 0.85, 1]
       },
-      fill: { opacity: 0.95 },
-      yaxis: {
-        labels: {
-          formatter: (v) => formatter.currency(v)
+      yaxis: [
+        {
+          title: {
+            text: 'Amount (INR)',
+            style: { color: '#94a3b8' }
+          },
+          labels: {
+            formatter: (v) => formatter.currency(v),
+            style: { colors: '#94a3b8' }
+          }
+        },
+        {
+          opposite: true,
+          title: {
+            text: '% of Salary Spent',
+            style: { color: '#f59e0b' }
+          },
+          labels: {
+            formatter: (v) => `${Math.round(v)}%`,
+            style: { colors: '#f59e0b' }
+          },
+          min: 0
+        }
+      ],
+      tooltip: {
+        theme: 'dark',
+        shared: true,
+        intersect: false,
+        y: {
+          formatter: function (val, { seriesIndex }) {
+            if (seriesIndex === 2) {
+              return `${val}% of salary`;
+            }
+            return formatter.currency(Math.round(val));
+          }
         }
       }
     };
