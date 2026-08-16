@@ -1442,15 +1442,19 @@ function renderAllCharts() {
             strokeDashArray: 5,
             borderWidth: 2,
             label: {
-              borderColor: '#f43f5e',
+              borderColor: 'rgba(244, 63, 94, 0.4)',
               style: {
                 color: '#ffffff',
-                background: '#f43f5e',
+                background: 'rgba(244, 63, 94, 0.8)',
                 fontSize: '10px',
                 fontWeight: 600,
                 fontFamily: 'Inter, sans-serif'
               },
-              text: `Budget Limit: ${formatter.currency(state.targets.budget)}`
+              text: `Budget Limit: ${formatter.currency(state.targets.budget)}`,
+              position: 'left',
+              textAnchor: 'start',
+              offsetX: 15,
+              offsetY: -10
             }
           }
         ]
