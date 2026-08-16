@@ -24,6 +24,8 @@ const state = {
   currentTab: 'overview',
   filters: {
     timeRange: 'all',
+    startDate: null,
+    endDate: null,
     salaryStream: 'all',
     expenseCategory: 'all',
     expenseType: 'all'
@@ -298,6 +300,22 @@ function updateLatestDate() {
   const dates = [...state.salaryData.map(d => d.date), ...state.expenseData.map(d => d.date)].filter(d => d);
   if (dates.length > 0) {
     state.latestDate = new Date(Math.max(...dates));
+    
+    // Set custom date picker boundary defaults on first load
+    const minDate = new Date(Math.min(...dates));
+    const inputStart = document.getElementById('filter-start-date');
+    const inputEnd = document.getElementById('filter-end-date');
+    
+    if (inputStart && !inputStart.value) {
+      const minDateStr = minDate.toLocaleDateString('en-CA');
+      inputStart.value = minDateStr;
+      state.filters.startDate = minDateStr;
+    }
+    if (inputEnd && !inputEnd.value) {
+      const maxDateStr = state.latestDate.toLocaleDateString('en-CA');
+      inputEnd.value = maxDateStr;
+      state.filters.endDate = maxDateStr;
+    }
   } else {
     state.latestDate = new Date(2026, 7, 11); // default fallback
   }
@@ -347,6 +365,18 @@ function matchTimeRange(date, range) {
   } else if (range === '12m') {
     const limit = new Date(ref.getFullYear(), ref.getMonth() - 12, ref.getDate());
     return itemTime >= limit.getTime();
+  } else if (range === 'custom') {
+    if (state.filters.startDate) {
+      const start = new Date(state.filters.startDate);
+      start.setHours(0, 0, 0, 0);
+      if (itemTime < start.getTime()) return false;
+    }
+    if (state.filters.endDate) {
+      const end = new Date(state.filters.endDate);
+      end.setHours(23, 59, 59, 999);
+      if (itemTime > end.getTime()) return false;
+    }
+    return true;
   }
   return true;
 }
@@ -2002,10 +2032,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Global Time Range Filter
   const timeRangeFilter = document.getElementById('filter-time-range');
+  const startWrapper = document.getElementById('filter-start-date-wrapper');
+  const endWrapper = document.getElementById('filter-end-date-wrapper');
+  const inputStart = document.getElementById('filter-start-date');
+  const inputEnd = document.getElementById('filter-end-date');
+
   if (timeRangeFilter) {
     timeRangeFilter.addEventListener('change', (e) => {
       state.filters.timeRange = e.target.value;
+      
+      if (e.target.value === 'custom') {
+        if (startWrapper) startWrapper.style.display = 'flex';
+        if (endWrapper) endWrapper.style.display = 'flex';
+        if (inputStart && !state.filters.startDate) {
+          state.filters.startDate = inputStart.value;
+        }
+        if (inputEnd && !state.filters.endDate) {
+          state.filters.endDate = inputEnd.value;
+        }
+      } else {
+        if (startWrapper) startWrapper.style.display = 'none';
+        if (endWrapper) endWrapper.style.display = 'none';
+      }
+      
       processData();
+    });
+  }
+
+  if (inputStart) {
+    inputStart.addEventListener('change', (e) => {
+      state.filters.startDate = e.target.value;
+      if (state.filters.timeRange === 'custom') {
+        processData();
+      }
+    });
+  }
+
+  if (inputEnd) {
+    inputEnd.addEventListener('change', (e) => {
+      state.filters.endDate = e.target.value;
+      if (state.filters.timeRange === 'custom') {
+        processData();
+      }
     });
   }
 

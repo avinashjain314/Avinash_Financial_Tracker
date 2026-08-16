@@ -77,7 +77,18 @@
             <option value="3m">Last 3 Months</option>
             <option value="6m">Last 6 Months</option>
             <option value="12m">Last 12 Months</option>
+            <option value="custom">Custom Range...</option>
           </select>
+        </div>
+
+        <!-- Custom calendar range pickers -->
+        <div class="filter-wrapper tab-filter-custom-date" id="filter-start-date-wrapper" style="display: none;">
+          <label for="filter-start-date">From</label>
+          <input type="date" id="filter-start-date" class="form-select">
+        </div>
+        <div class="filter-wrapper tab-filter-custom-date" id="filter-end-date-wrapper" style="display: none;">
+          <label for="filter-end-date">To</label>
+          <input type="date" id="filter-end-date" class="form-select">
         </div>
 
         <!-- Salary tab specific filter -->
