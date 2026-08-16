@@ -1867,6 +1867,183 @@ function renderAllCharts() {
     state.charts.expenseBuckets = new ApexCharts(bucketsEl, options);
     state.charts.expenseBuckets.render();
   }
+
+  // ==========================================
+  // CHART 9B: Expenses - Spending by Budget Buckets (% of Salary) (Donut)
+  // ==========================================
+  const bucketsSalaryEl = document.getElementById('chart-expense-buckets-salary');
+  if (bucketsSalaryEl && state.currentTab === 'expenses') {
+    // Helper to categorize raw category to user's defined bucket
+    const getBucketForCategory = (category) => {
+      const cat = String(category).trim().toLowerCase();
+      if (['lunch', 'dinner', 'breakfast', 'fast food'].includes(cat)) return 'Food';
+      if (cat === 'rent') return 'Rent';
+      if (['travel', 'porter'].includes(cat)) return 'Travel';
+      if (['pe', 'haircut/shaving', 'sofa set'].includes(cat)) return 'Personal Expenses';
+      if (['jio recharge', 'electricity bill', 'water'].includes(cat)) return 'Recharge/Bills';
+      if (['groceries', 'fruits'].includes(cat)) return 'Groceries/Fruits';
+      if (cat === 'loved ones') return 'Loved ones';
+      if (cat === 'baby') return 'Baby';
+      return 'Others';
+    };
+
+    const bucketTotals = {
+      'Food': 0,
+      'Rent': 0,
+      'Travel': 0,
+      'Personal Expenses': 0,
+      'Recharge/Bills': 0,
+      'Groceries/Fruits': 0,
+      'Loved ones': 0,
+      'Baby': 0,
+      'Others': 0
+    };
+
+    state.filteredExpense.forEach(d => {
+      const bucket = getBucketForCategory(d.category);
+      bucketTotals[bucket] += d.amount;
+    });
+
+    const totalIncomeVal = state.filteredSalary.reduce((acc, curr) => acc + curr.amount, 0);
+
+    if (totalIncomeVal === 0) {
+      bucketsSalaryEl.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:340px; color:var(--text-secondary); text-align:center; padding: 20px;">
+          <i class="fa-solid fa-circle-exclamation" style="font-size: 2rem; color: var(--accent-net); margin-bottom: 12px;"></i>
+          <p style="font-weight: 600; font-family: var(--font-heading); margin-bottom: 4px; font-size:0.95rem;">No Income in Period</p>
+          <p style="font-size: 0.75rem; color: var(--text-muted); line-height:1.4;">Select a timeframe with recorded income streams to calculate % of salary.</p>
+        </div>
+      `;
+    } else {
+      const bucketLabels = Object.keys(bucketTotals).filter(b => bucketTotals[b] > 0);
+      const bucketValues = bucketLabels.map(b => Math.round(bucketTotals[b]));
+      const totalExpenseVal = bucketValues.reduce((a, b) => a + b, 0);
+
+      if (totalExpenseVal === 0) {
+        bucketsSalaryEl.innerHTML = `
+          <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:340px; color:var(--text-secondary); text-align:center; padding: 20px;">
+            <i class="fa-solid fa-basket-shopping" style="font-size: 2rem; color: var(--accent-expense); margin-bottom: 12px;"></i>
+            <p style="font-weight: 600; font-family: var(--font-heading); margin-bottom: 4px; font-size:0.95rem;">No Expense Data</p>
+            <p style="font-size: 0.75rem; color: var(--text-muted); line-height:1.4;">No expenses recorded for this timeframe.</p>
+          </div>
+        `;
+      } else {
+        const seriesData = [...bucketValues];
+        const labelsData = [...bucketLabels];
+        
+        let remainingSavings = totalIncomeVal - totalExpenseVal;
+        if (remainingSavings > 0) {
+          seriesData.push(Math.round(remainingSavings));
+          labelsData.push('Savings (Remaining)');
+        }
+
+        const options = {
+          ...baseChartOptions,
+          chart: {
+            ...baseChartOptions.chart,
+            type: 'donut',
+            height: 340
+          },
+          colors: [
+            '#10b981', // Food - Emerald
+            '#6366f1', // Rent - Indigo
+            '#0ea5e9', // Travel - Sky
+            '#f43f5e', // Personal - Rose
+            '#f59e0b', // Recharge - Amber
+            '#84cc16', // Groceries - Lime
+            '#ec4899', // Loved ones - Pink
+            '#06b6d4', // Baby - Cyan
+            '#94a3b8', // Others - Slate
+            '#10b981'  // Savings - Emerald
+          ],
+          series: seriesData,
+          labels: labelsData,
+          plotOptions: {
+            pie: {
+              donut: {
+                size: '70%',
+                background: 'transparent',
+                labels: {
+                  show: true,
+                  name: {
+                    show: true,
+                    fontSize: '12px',
+                    fontFamily: 'Outfit, sans-serif',
+                    fontWeight: 600,
+                    color: '#94a3b8',
+                    offsetY: -8
+                  },
+                  value: {
+                    show: true,
+                    fontSize: '18px',
+                    fontFamily: 'Outfit, sans-serif',
+                    fontWeight: 700,
+                    color: '#f8fafc',
+                    offsetY: 8,
+                    formatter: (val) => `${((val / totalIncomeVal) * 100).toFixed(1)}%`
+                  },
+                  total: {
+                    show: true,
+                    label: 'Total Salary',
+                    color: '#94a3b8',
+                    fontSize: '11px',
+                    fontFamily: 'Inter, sans-serif',
+                    fontWeight: 500,
+                    formatter: function () {
+                      return formatter.currency(totalIncomeVal);
+                    }
+                  }
+                }
+              }
+            }
+          },
+          dataLabels: {
+            enabled: true,
+            formatter: function (val, opts) {
+              const rawVal = opts.w.config.series[opts.seriesIndex];
+              const pctOfSalary = (rawVal / totalIncomeVal) * 100;
+              return pctOfSalary.toFixed(1) + '%';
+            },
+            style: {
+              fontSize: '10px',
+              fontFamily: 'Inter, sans-serif',
+              fontWeight: 600
+            },
+            dropShadow: { enabled: false }
+          },
+          legend: {
+            position: 'bottom',
+            fontSize: '10px',
+            fontFamily: 'Inter, sans-serif',
+            fontWeight: 500,
+            labels: { colors: '#94a3b8' },
+            markers: { radius: 12 },
+            itemMargin: { horizontal: 8, vertical: 4 }
+          },
+          stroke: {
+            show: true,
+            width: 2,
+            colors: ['#0f172a']
+          },
+          tooltip: {
+            theme: 'dark',
+            y: {
+              formatter: function (val) {
+                const pct = ((val / totalIncomeVal) * 100).toFixed(1);
+                return `${formatter.currency(val)} (${pct}% of salary)`;
+              }
+            }
+          }
+        };
+
+        if (state.charts.expenseBucketsSalary) {
+          state.charts.expenseBucketsSalary.destroy();
+        }
+        state.charts.expenseBucketsSalary = new ApexCharts(bucketsSalaryEl, options);
+        state.charts.expenseBucketsSalary.render();
+      }
+    }
+  }
 }
 
 // Render Interactive tables
